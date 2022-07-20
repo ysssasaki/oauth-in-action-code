@@ -47,10 +47,22 @@ app.get('/', function(req, res) {
 
 app.get("/authorize", function(req, res){
 	
-	/*
-	 * Process the request, validate the client, and send the user to the approval page
-	 */
-	
+	var client = getClient(req.query.client_id);
+
+	if (!client) {
+		// clientの情報が存在するか確認する
+		res.render('error', { error: 'Unknown client' });
+		return;
+	} else if (!__.contains(client.redirect_uris, req.query.redirect_uri)) {
+		// redirect URIが正しいか（clientが偽装されていないか）確認する
+		res.render('error', { error : 'Invalid redirect URI' });
+		return;
+	}
+
+	// 後に元のリクエストの値を取得する際に用いるランダムキー（CSRF対策）
+	var reqid = randomstring.generate(8);
+	requests[reqid] = req.query;
+	res.render('approve', { client : client, reqid: reqid });
 });
 
 app.post('/approve', function(req, res) {

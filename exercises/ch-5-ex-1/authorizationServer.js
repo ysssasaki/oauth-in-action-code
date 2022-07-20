@@ -26,10 +26,11 @@ var authServer = {
 
 // client information
 var clients = [
-
-  /*
-   * Enter client information here
-   */
+  {
+	"client_id": "oauth-client-1",
+	"client_secret": "oauth-client-secret-1",
+	"redirect_uris": ["http://localhost:9000/callback"],
+  }
 ];
 
 var codes = {};

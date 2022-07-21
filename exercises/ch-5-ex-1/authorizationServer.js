@@ -62,15 +62,47 @@ app.get("/authorize", function(req, res){
 	// 後に元のリクエストの値を取得する際に用いるランダムキー（CSRF対策）
 	var reqid = randomstring.generate(8);
 	requests[reqid] = req.query;
-	res.render('approve', { client : client, reqid: reqid });
+	res.render('approve', { client: client, reqid: reqid });
 });
 
 app.post('/approve', function(req, res) {
 
-	/*
-	 * Process the results of the approval page, authorize the client
-	 */
+	var reqid = req.body.reqid;
+	var query = requests[reqid];
+	delete requests[reqid];
+
+	if (!query) {
+		res.render('error', { error: 'No matching authorization request' });
+		return;
+	}
 	
+	if (req.body.approve) {
+		if (query.response_type == 'code') {
+			var code = randomstring.generate(8);
+
+			codes[code] = { request: query };
+
+			var urlParsed = buildUrl(query.redirect_uri, {
+				code: code,
+				state: query.state
+			});
+			res.redirect(urlParsed);
+			return;
+		} else {
+			var urlParsed = buildUrl(query.redirect_uri, {
+				error: 'unsupported_response_type'
+			});
+			res.redirect(urlParsed);
+			return;
+		}
+	} else {
+		var urlParsed = buildUrl(query.redirect_uri, {
+			error: 'access_denied'
+		});
+		res.redirect(urlParsed);
+		return;
+	}
+
 });
 
 app.post("/token", function(req, res){

@@ -107,9 +107,64 @@ app.post('/approve', function(req, res) {
 
 app.post("/token", function(req, res){
 
-	/*
-	 * Process the request, issue an access token
-	 */
+	var auth = req.headers['authorization'];
+	if (auth) {
+		var clientCredentials = decodeClientCredentials(auth);
+		var clientId = clientCredentials.id;
+		var clientSecret = clientCredentials.secret;
+	}
+
+	if (req.body.client_id) {
+		if (clientId) {
+			res.status(401).json({ error: 'invalid_client' });
+			return;
+		}
+		var clientId = req.body.client_id;
+		var clientSecret = req.body.client_secret;
+	}
+
+	var client = getClient(clientId);
+	if (!client) {
+		res.status(401).json({ error: 'invalid_client' });
+		return;
+	}
+
+	if (client.client_secret != clientSecret) {
+		res.status(401).json({ error: 'invalid_client' });
+		return;
+	}
+
+	if (req.body.grant_type == 'authorization_code') {
+		var code = codes[req.body.code];
+		if (code) {
+			delete codes[req.body.code];
+			if (code.request.client_id == clientId) {
+
+				var access_token = randomstring.generate();
+
+				nosql.insert({ access_token: access_token, client_id: clientId, scope: code.scope });
+
+
+				var token_response = {
+					access_token: access_token,
+					token_type: 'Bearer'
+				};
+
+				res.status(200).json(token_response);
+				
+				return;
+			} else {
+				res.status(400).json({ error: 'invalid_grant' });
+				return;
+			}
+		} else {
+			res.status(400).json({ error: 'invalid_grant' });
+			return;
+		}
+	} else {
+		res.status(400).json({ error: 'unsupported_grant_type' });
+		return;
+	}
 
 });
 
